@@ -2,12 +2,13 @@
 
 //! Provides localization support for this crate.
 
+use std::sync::LazyLock;
+
 use i18n_embed::{
     fluent::{fluent_language_loader, FluentLanguageLoader},
     unic_langid::LanguageIdentifier,
     DefaultLocalizer, LanguageLoader, Localizer,
 };
-use once_cell::sync::Lazy;
 use rust_embed::RustEmbed;
 
 /// Applies the requested language(s) to requested translations from the `fl!()` macro.
@@ -27,7 +28,7 @@ pub fn localizer() -> Box<dyn Localizer> {
 #[folder = "i18n/"]
 struct Localizations;
 
-pub static LANGUAGE_LOADER: Lazy<FluentLanguageLoader> = Lazy::new(|| {
+pub static LANGUAGE_LOADER: LazyLock<FluentLanguageLoader> = LazyLock::new(|| {
     let loader: FluentLanguageLoader = fluent_language_loader!();
 
     loader

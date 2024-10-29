@@ -2,7 +2,7 @@
 
 use crate::config::Config;
 use crate::fl;
-use cosmic::app::{Command, Core};
+use cosmic::app::{Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length, Subscription};
@@ -61,7 +61,7 @@ impl Application for AppModel {
     }
 
     /// Initializes the application with any given flags and startup commands.
-    fn init(core: Core, _flags: Self::Flags) -> (Self, Command<Self::Message>) {
+    fn init(core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
         // Create a nav bar with three page items.
         let mut nav = nav_bar::Model::default();
 
@@ -161,14 +161,13 @@ impl Application for AppModel {
 
         Subscription::batch(vec![
             // Create a subscription which emits updates through a channel.
-            cosmic::iced::subscription::channel(
+            Subscription::run_with_id(
                 std::any::TypeId::of::<MySubscription>(),
-                4,
-                move |mut channel| async move {
+                cosmic::iced::stream::channel(4, move |mut channel| async move {
                     _ = channel.send(Message::SubscriptionChannel).await;
 
                     futures_util::future::pending().await
-                },
+                }),
             ),
             // Watch for application configuration changes.
             self.core()
@@ -185,9 +184,9 @@ impl Application for AppModel {
 
     /// Handles messages emitted by the application and its widgets.
     ///
-    /// Commands may be returned for asynchronous execution of code in the background
+    /// Tasks may be returned for asynchronous execution of code in the background
     /// on the application's async runtime.
-    fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
+    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
         match message {
             Message::OpenRepositoryUrl => {
                 _ = open::that_detached(REPOSITORY);
@@ -215,11 +214,11 @@ impl Application for AppModel {
                 self.config = config;
             }
         }
-        Command::none()
+        Task::none()
     }
 
     /// Called when a nav item is selected.
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Command<Self::Message> {
+    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
         // Activate the page in the model.
         self.nav.activate(id);
 
@@ -244,13 +243,13 @@ impl AppModel {
             .push(icon)
             .push(title)
             .push(link)
-            .align_items(Alignment::Center)
+            .align_x(Alignment::Center)
             .spacing(space_xxs)
             .into()
     }
 
     /// Updates the header and window titles.
-    pub fn update_title(&mut self) -> Command<Message> {
+    pub fn update_title(&mut self) -> Task<Message> {
         let mut window_title = fl!("app-title");
 
         if let Some(page) = self.nav.text(self.nav.active()) {
@@ -258,7 +257,11 @@ impl AppModel {
             window_title.push_str(page);
         }
 
-        self.set_window_title(window_title)
+        if let Some(id) = self.core.main_window_id() {
+            self.set_window_title(window_title, id)
+        } else {
+            Task::none()
+        }
     }
 }
 

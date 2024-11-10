@@ -1,10 +1,10 @@
 [Desktop Entry]
-Name={{APP_NAME}}
-Exec={{APP_BINARY}} %F
+Name={{ project-name | title_case }}
+Exec={{ project-name }} %F
 Terminal=false
 Type=Application
 StartupNotify=true
-Icon={{APP_ID}}
+Icon={{ app_id }}
 Categories=COSMIC;
 Keywords=
 MimeType=

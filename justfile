@@ -1,5 +1,5 @@
-name := 'cosmic-app-template'
-appid := 'com.example.CosmicAppTemplate'
+name := '{{ project-name }}'
+app-id := '{{ app-id }}'
 
 rootdir := ''
 prefix := '/usr'
@@ -9,7 +9,7 @@ base-dir := absolute_path(clean(rootdir / prefix))
 bin-src := 'target' / 'release' / name
 bin-dst := base-dir / 'bin' / name
 
-desktop := appid + '.desktop'
+desktop := app-id + '.desktop'
 desktop-src := 'res' / desktop
 desktop-dst := clean(rootdir / prefix) / 'share' / 'applications' / desktop
 
@@ -17,7 +17,7 @@ icons-src := 'res' / 'icons' / 'hicolor'
 icons-dst := clean(rootdir / prefix) / 'share' / 'icons' / 'hicolor'
 
 icon-svg-src := icons-src / 'scalable' / 'apps' / 'icon.svg'
-icon-svg-dst := icons-dst / 'scalable' / 'apps' / appid + '.svg'
+icon-svg-dst := icons-dst / 'scalable' / 'apps' / app-id + '.svg'
 
 # Default recipe which runs `just build-release`
 default: build-release

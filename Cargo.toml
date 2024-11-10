@@ -1,7 +1,12 @@
 [package]
-name = "cosmic-app-template"
+name = "{{ project-name }}"
 version = "0.1.0"
+authors = ["{{ authors }}"]
 edition = "2021"
+repository = "{{ repository-url }}"
+description = """
+{{ description }}
+"""
 
 [dependencies]
 futures-util = "0.3.31"
@@ -18,22 +23,22 @@ features = ["fluent-system", "desktop-requester"]
 git = "https://github.com/pop-os/libcosmic.git"
 # See https://github.com/pop-os/libcosmic/blob/master/Cargo.toml for available features.
 features = [
-    # Accessibility support
-    "a11y",
-    # Uses cosmic-settings-daemon to watch for config file changes
-    "dbus-config",
-    # Support creating additional application windows.
-    "multi-window",
-    # On app startup, focuses an existing instance if the app is already open
-    "single-instance",
-    # Uses tokio as the executor for the runtime
-    "tokio",
-    # Windowing support for X11, Windows, Mac, & Redox
-    "winit",
-    # Add Wayland support to winit
-    "wayland",
-    # GPU-accelerated rendering
-    "wgpu",
+  # Accessibility support
+  "a11y",
+  # Uses cosmic-settings-daemon to watch for config file changes
+  "dbus-config",
+  # Support creating additional application windows.
+  "multi-window",
+  # On app startup, focuses an existing instance if the app is already open
+  "single-instance",
+  # Uses tokio as the executor for the runtime
+  "tokio",
+  # Windowing support for X11, Windows, Mac, & Redox
+  "winit",
+  # Add Wayland support to winit
+  "wayland",
+  # GPU-accelerated rendering
+  "wgpu",
 ]
 
 # Uncomment to test a locally-cloned libcosmic

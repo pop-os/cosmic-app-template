@@ -7,13 +7,11 @@ description = { type = "text", prompt = "Long description for the app:", defalut
 repository-url = { type = "string", prompt = "Repository URL (https://*)", regex = "^https?:\\/\\/(www\\.)?[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$" }
 app-id = { type = "string", prompt = "App ID (com.example.MyCosmicApp)", regex = "^[a-zA-Z0-9]+\\.[a-zA-Z0-9]+\\.[a-zA-Z0-9]+$" }
 
-_license = { type = "bool", prompt = "Add a Licence?", default = true }
-[conditional.'_license'.placeholders.license]
-type = "string"
-prompt = "Please select *a valid* identifier from <https://github.com/spdx/license-list-data/blob/v3.20/licenses.md>"
-# TODO: use a rhai script to add the appropriate `LICENSE` file containing chosen license. see examples in (and to rename files below): https://cargo-generate.github.io/cargo-generate/templates/conditional.html
-choices = ["MPL-2.0", "MIT", "AGPL-3.0-or-later", "Unlicense", "(Custom...)"]
-# TODO: Other choice is conditional -> string input and promt user must add LICENSE manually
-
-# TODO: rename file hook, example: https://github.com/cargo-generate/cargo-generate/blob/main/example-templates/hooks/README.md
-# Rename the file `i18n/en/cosmic_app_template.ftl` by replacing the `cosmic_app_template` portion with the new crate `name` you set in `Cargo.toml`.
+[hooks]
+pre = [
+  "generate/license.rhai",
+  "generate/rename.rhai",
+]
+post = [
+  "generate/cleanup.rhai",
+]

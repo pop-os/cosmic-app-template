@@ -1,15 +1,15 @@
 // This example script asks the users selection of license
 
 let license = variable::prompt("Which license do you want to use?",
-				"MPL-2.0",
-                ["MPL-2.0",
-				 "MIT",
-				 "AGPL-3.0",
-				 "Apache-2.0",
-				 "Unlicense",
-				 "(Other)",
-				 "None"
-				]
+	"MPL-2.0",
+	["MPL-2.0",
+	 "MIT",
+	 "AGPL-3.0",
+	 "Apache-2.0",
+	 "Unlicense",
+	 "(Other)",
+	 "None"
+	]
 );
 
 if license == "(Other)" {

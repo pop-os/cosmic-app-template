@@ -2,6 +2,7 @@
 name = "{{ project-name }}"
 version = "0.1.0"
 authors = ["{{ authors }}"]
+license = "{{ license }}"
 edition = "2021"
 repository = "{{ repository-url }}"
 description = """

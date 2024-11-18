@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: {{ license-choice }}
+// SPDX-License-Identifier: {{ license }}
 
 use crate::config::Config;
 use crate::fl;

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: {{ license-choice }}
+// SPDX-License-Identifier: {{ license }}
 
 //! Provides localization support for this crate.
 

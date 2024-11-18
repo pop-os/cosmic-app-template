@@ -27,6 +27,7 @@ Log into your GitHub account and navigate to [this template there][app-template]
 - Rename the file `i18n/en/cosmic_app_template.ftl` by replacing the `cosmic_app_template` portion with the new crate `name` you set in `Cargo.toml`.
 - Set your license within the SPDX tags at the top of each source file
 - Replace this `README.md` with your own, optionally based on `README.md.liquid`, removing the postfix.
+- Delete the `generate/` directory.
 
 [api-docs]: https://pop-os.github.io/libcosmic/cosmic/
 [book]: https://pop-os.github.io/libcosmic-book/

@@ -1,9 +1,8 @@
-# See docs @ https://cargo-generate.github.io/cargo-generate/
 [template]
 cargo_generate_version = ">=0.22"
 
 [placeholders]
-description = { type = "text", prompt = "Long description for the app:", defalut = "A COSMIC application, built using the [`libcosmic` template](https://github.com/pop-os/cosmic-app-template/" }
+description = { type = "text", prompt = "Long description for the app:" }
 repository-url = { type = "string", prompt = "Repository URL (https://*)", regex = "^https?:\\/\\/(www\\.)?[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$" }
 app-id = { type = "string", prompt = "App ID (com.example.MyCosmicApp)", regex = "^[a-zA-Z0-9]+\\.[a-zA-Z0-9]+\\.[a-zA-Z0-9]+$" }
 

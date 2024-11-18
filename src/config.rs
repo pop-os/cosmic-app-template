@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: {{ license-choice }}
+// SPDX-License-Identifier: {{ license }}
 
 use cosmic::cosmic_config::{self, cosmic_config_derive::CosmicConfigEntry, CosmicConfigEntry};
 

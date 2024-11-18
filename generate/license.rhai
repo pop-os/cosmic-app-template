@@ -4,12 +4,12 @@ print("Please select *a valid* identifier from <https://github.com/spdx/license-
 let license = variable::prompt("Which license do you want to use?",
 				"MPL-2.0",
                 ["MPL-2.0",
-					"MIT",
-					"AGPL-3.0",
-					"Apache-2.0",
-					"Unlicense",
-					"Custom",
-					"None"
+				 "MIT",
+				 "AGPL-3.0",
+				 "Apache-2.0",
+				 "Unlicense",
+				 "Custom",
+				 "None"
 				]
 );
 
@@ -25,7 +25,7 @@ if license != "None" {
 	file::rename(`generate/licenses/${license}`, "LICENSE");
 }
 
-// Some licences require a copyright year
+// Some licenses require a copyright year
 // Cargo generate's `authors` is used for owner
 let _year = system::date().year;
 let year = `${_year}`;

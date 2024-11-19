@@ -2,7 +2,7 @@
 
 use crate::config::Config;
 use crate::fl;
-use cosmic::app::{Core, Task};
+use cosmic::app::{context_drawer, Core, Task};
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length, Subscription};
@@ -114,7 +114,7 @@ impl Application for AppModel {
             menu::root(fl!("view")),
             menu::items(
                 &self.key_binds,
-                vec![menu::Item::Button(fl!("about"), MenuAction::About)],
+                vec![menu::Item::Button(fl!("about"), None, MenuAction::About)],
             ),
         )]);
 
@@ -127,13 +127,17 @@ impl Application for AppModel {
     }
 
     /// Display a context drawer if the context page is requested.
-    fn context_drawer(&self) -> Option<Element<Self::Message>> {
+    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<Self::Message>> {
         if !self.core.window.show_context {
             return None;
         }
 
         Some(match self.context_page {
-            ContextPage::About => self.about(),
+            ContextPage::About => context_drawer::context_drawer(
+                self.about(),
+                Message::ToggleContextPage(ContextPage::About),
+            )
+            .title(fl!("about")),
         })
     }
 
@@ -205,9 +209,6 @@ impl Application for AppModel {
                     self.context_page = context_page;
                     self.core.window.show_context = true;
                 }
-
-                // Set the title of the context drawer.
-                self.set_context_title(context_page.title());
             }
 
             Message::UpdateConfig(config) => {
@@ -277,14 +278,6 @@ pub enum Page {
 pub enum ContextPage {
     #[default]
     About,
-}
-
-impl ContextPage {
-    fn title(&self) -> String {
-        match self {
-            Self::About => fl!("about"),
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

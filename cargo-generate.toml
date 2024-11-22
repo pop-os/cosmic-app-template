@@ -1,0 +1,16 @@
+[template]
+cargo_generate_version = ">=0.22"
+
+[placeholders]
+description = { type = "string", prompt = "App description:", default = "An App built for COSMIC, based on the [`libcosmic` template](https://github.com/pop-os/cosmic-app-template/" }
+repository-url = { type = "string", prompt = "Repository URL (https://*)", regex = "^https?:\\/\\/(www\\.)?[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$" }
+app-id = { type = "string", prompt = "App ID (com.example.MyCosmicApp)", regex = "^[a-zA-Z0-9]+\\.[a-zA-Z0-9]+\\.[a-zA-Z0-9]+$" }
+
+[hooks]
+pre = [
+  "generate/license.rhai",
+  "generate/rename.rhai",
+]
+post = [
+  "generate/cleanup.rhai",
+]

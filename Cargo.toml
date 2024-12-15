@@ -2,6 +2,10 @@
 name = "cosmic-app-template"
 version = "0.1.0"
 edition = "2021"
+repository = "https://github.com/pop-os/cosmic-app-template"
+
+[build-dependencies]
+vergen = { version = "8", features = ["git", "gitcl"] }
 
 [dependencies]
 futures-util = "0.3.31"

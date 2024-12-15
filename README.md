@@ -11,7 +11,6 @@ Log into your GitHub account and click the "Use this template" button above. Thi
 - Rename the file `i18n/en/cosmic_app_template.ftl` by replacing the `cosmic_app_template` portion with the new crate `name` you set in `Cargo.toml`.
 - In `justfile`, change the `name` and `appid` variables with your own.
 - In `src/app.rs`, change the `APP_ID` value in the `Application` implementation of the `AppModel`.
-- In `src/app.rs`, change the `REPOSITORY` const with the URL to your application's git repository.
 - In `res/app.desktop`, change the `Name=`, `Exec=`, and `Icon=` fields
 - Set your license within the SPDX tags at the top of each source file
 

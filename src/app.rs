@@ -11,7 +11,7 @@ use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
 use futures_util::SinkExt;
 use std::collections::HashMap;
 
-const REPOSITORY: &str = "https://github.com/pop-os/cosmic-app-template";
+const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 const APP_ICON: &[u8] = include_bytes!("../res/icons/hicolor/scalable/apps/icon.svg");
 
 /// The application model stores app-specific state used to describe its interface and
@@ -36,6 +36,7 @@ pub enum Message {
     SubscriptionChannel,
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
+    LaunchUrl(String),
 }
 
 /// Create a COSMIC application from the app model
@@ -214,6 +215,13 @@ impl Application for AppModel {
             Message::UpdateConfig(config) => {
                 self.config = config;
             }
+
+            Message::LaunchUrl(url) => match open::that_detached(&url) {
+                Ok(()) => {}
+                Err(err) => {
+                    eprintln!("failed to open {url:?}: {err}");
+                }
+            },
         }
         Task::none()
     }
@@ -236,6 +244,10 @@ impl AppModel {
 
         let title = widget::text::title3(fl!("app-title"));
 
+        let hash = env!("VERGEN_GIT_SHA");
+        let short_hash: String = hash.chars().take(7).collect();
+        let date = env!("VERGEN_GIT_COMMIT_DATE");
+
         let link = widget::button::link(REPOSITORY)
             .on_press(Message::OpenRepositoryUrl)
             .padding(0);
@@ -244,6 +256,15 @@ impl AppModel {
             .push(icon)
             .push(title)
             .push(link)
+            .push(
+                widget::button::link(fl!(
+                    "git-description",
+                    hash = short_hash.as_str(),
+                    date = date
+                ))
+                .on_press(Message::LaunchUrl(format!("{REPOSITORY}/commits/{hash}")))
+                .padding(0),
+            )
             .align_x(Alignment::Center)
             .spacing(space_xxs)
             .into()

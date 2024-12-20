@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: {{LICENSE}}
+// SPDX-License-Identifier: {{ license }}
 
 mod app;
 mod config;

@@ -1,4 +1,4 @@
-app-title = COSMIC App Template
+app-title = {{ project-name | title_case }}
 about = About
 view = View
 welcome = Welcome to COSMIC! ✨

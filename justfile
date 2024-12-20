@@ -1,5 +1,5 @@
-name := 'cosmic-app-template'
-appid := 'com.example.CosmicAppTemplate'
+name := '{{ project-name }}'
+appid := '{{ appid }}'
 
 rootdir := ''
 prefix := '/usr'
@@ -10,10 +10,10 @@ bin-src := 'target' / 'release' / name
 bin-dst := base-dir / 'bin' / name
 
 desktop := appid + '.desktop'
-desktop-src := 'res' / desktop
+desktop-src := 'resources' / desktop
 desktop-dst := clean(rootdir / prefix) / 'share' / 'applications' / desktop
 
-icons-src := 'res' / 'icons' / 'hicolor'
+icons-src := 'resources' / 'icons' / 'hicolor'
 icons-dst := clean(rootdir / prefix) / 'share' / 'icons' / 'hicolor'
 
 icon-svg-src := icons-src / 'scalable' / 'apps' / 'icon.svg'

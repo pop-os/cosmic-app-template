@@ -1,18 +1,14 @@
 # COSMIC Application Template
 
-A template for developing applications for the COSMIC™ desktop environment.
+A template for developing applications for the COSMIC™ desktop environment using [libcosmic][libcosmic].
 
 ## Getting Started
 
-Log into your GitHub account and click the "Use this template" button above. This will create a new repository in your account. Choose a name for this repository, and then clone it locally onto your system. Make the following changes after cloning it:
+To create an application with this template, [install `cargo generate`][cargo-generate] and run:
 
-- In `Cargo.toml`, change the `name` and set your `license` and `repository`.
-- Create a `LICENSE` file containing your chosen software license.
-- Rename the file `i18n/en/cosmic_app_template.ftl` by replacing the `cosmic_app_template` portion with the new crate `name` you set in `Cargo.toml`.
-- In `justfile`, change the `name` and `appid` variables with your own.
-- In `src/app.rs`, change the `APP_ID` value in the `Application` implementation of the `AppModel`.
-- In `res/app.desktop`, change the `Name=`, `Exec=`, and `Icon=` fields
-- Set your license within the SPDX tags at the top of each source file
+```sh
+cargo generate gh:pop-os/cosmic-app-template
+```
 
 A [justfile](./justfile) is included by default with common recipes used by other COSMIC projects. Install from [casey/just][just]
 
@@ -30,5 +26,6 @@ Refer to the [libcosmic API documentation][api-docs] and [book][book] for help w
 
 [api-docs]: https://pop-os.github.io/libcosmic/cosmic/
 [book]: https://pop-os.github.io/libcosmic-book/
+[cargo-generate]: https://cargo-generate.github.io/cargo-generate/installation.html
 [libcosmic]: https://github.com/pop-os/libcosmic/
 [just]: https://github.com/casey/just

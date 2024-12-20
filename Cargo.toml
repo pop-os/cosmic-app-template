@@ -1,8 +1,10 @@
 [package]
-name = "cosmic-app-template"
+name = "{{ project-name }}"
 version = "0.1.0"
 edition = "2021"
-repository = "https://github.com/pop-os/cosmic-app-template"
+license = "{{ license }}"
+description = "{{ description }}"
+repository = "{{ repository-url }}"
 
 [build-dependencies]
 vergen = { version = "8", features = ["git", "gitcl"] }

@@ -13,6 +13,10 @@ desktop := appid + '.desktop'
 desktop-src := 'resources' / desktop
 desktop-dst := clean(rootdir / prefix) / 'share' / 'applications' / desktop
 
+appdata := appid + '.metainfo.xml'
+appdata-src := 'resources' / appdata
+appdata-dst := clean(rootdir / prefix) / 'share' / 'appdata' / appdata
+
 icons-src := 'resources' / 'icons' / 'hicolor'
 icons-dst := clean(rootdir / prefix) / 'share' / 'icons' / 'hicolor'
 
@@ -57,7 +61,8 @@ run *args:
 # Installs files
 install:
     install -Dm0755 {{bin-src}} {{bin-dst}}
-    install -Dm0644 res/app.desktop {{desktop-dst}}
+    install -Dm0644 resources/app.desktop {{desktop-dst}}
+    install -Dm0644 resources/app.metainfo.xml {{appdata-dst}}
     install -Dm0644 {{icon-svg-src}} {{icon-svg-dst}}
 
 # Uninstalls installed files

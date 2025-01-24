@@ -1,6 +1,6 @@
 name := '{{ project-name }}'
 appid := '{{ appid }}'
-
+{% raw %}
 rootdir := ''
 prefix := '/usr'
 
@@ -93,3 +93,4 @@ vendor:
 vendor-extract:
     rm -rf vendor
     tar pxf vendor.tar
+{% endraw %}

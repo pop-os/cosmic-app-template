@@ -1,11 +1,27 @@
 [template]
 cargo_generate_version = ">=0.22"
 
-[placeholders]
-appid = { type = "string", prompt = "App ID (com.example.MyCosmicApp)", regex = "^[a-zA-Z0-9]+\\.[a-zA-Z0-9]+\\.[a-zA-Z0-9]+(\\.[a-zA-Z0-9]+)?$" }
-description = { type = "string", prompt = "App description:", default = "An application for the COSMIC™ desktop" }
-license = { type = "string", prompt = "SPDX license identifier (https://spdx.org/licenses/)", default = "MPL-2.0" }
-repository-url = { type = "string", prompt = "Repository URL (https://*)", regex = "^https?:\\/\\/(www\\.)?[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$" }
+[placeholders.appid]
+type = "string"
+prompt = "RDNN App ID (com.github.username.ProjectName)"
+regex = "^[a-zA-Z0-9]+\\.[a-zA-Z0-9]+\\.[a-zA-Z0-9-_]+(\\.[a-zA-Z0-9-_]+)?$"
+default = "com.github.pop-os.cosmic-app-template"
+
+[placeholders.description]
+type = "string"
+prompt = "Description of application"
+default = "An application for the COSMIC™ desktop"
+
+[placeholders.license]
+type = "string"
+prompt = "SPDX license identifier (https://spdx.org/licenses/)"
+default = "MPL-2.0"
+
+[placeholders.repository-url]
+type = "string"
+prompt = "Repository URL (https://*)"
+default = "https://github.com/pop-os/cosmic-app-template"
+regex = "^https?:\\/\\/(www\\.)?[\\w\\-]+(\\.[\\w\\-]+)+[/#?]?.*$"
 
 [hooks]
 pre = ["generate/rename.rhai"]

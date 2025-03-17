@@ -2,12 +2,13 @@
 
 use crate::config::Config;
 use crate::fl;
-use cosmic::app::{context_drawer, Core, Task};
+use cosmic::app::context_drawer;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length, Subscription};
+use cosmic::prelude::*;
 use cosmic::widget::{self, icon, menu, nav_bar};
-use cosmic::{cosmic_theme, theme, Application, ApplicationExt, Apply, Element};
+use cosmic::{cosmic_theme, theme};
 use futures_util::SinkExt;
 use std::collections::HashMap;
 
@@ -18,7 +19,7 @@ const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps
 /// drive its logic.
 pub struct AppModel {
     /// Application state which is managed by the COSMIC runtime.
-    core: Core,
+    core: cosmic::Core,
     /// Display a context drawer with the designated page if defined.
     context_page: ContextPage,
     /// Contains items assigned to the nav bar panel.
@@ -40,7 +41,7 @@ pub enum Message {
 }
 
 /// Create a COSMIC application from the app model
-impl Application for AppModel {
+impl cosmic::Application for AppModel {
     /// The async executor that will be used to run your application's commands.
     type Executor = cosmic::executor::Default;
 
@@ -53,16 +54,19 @@ impl Application for AppModel {
     /// Unique identifier in RDNN (reverse domain name notation) format.
     const APP_ID: &'static str = "{{ appid }}";
 
-    fn core(&self) -> &Core {
+    fn core(&self) -> &cosmic::Core {
         &self.core
     }
 
-    fn core_mut(&mut self) -> &mut Core {
+    fn core_mut(&mut self) -> &mut cosmic::Core {
         &mut self.core
     }
 
     /// Initializes the application with any given flags and startup commands.
-    fn init(core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
+    fn init(
+        core: cosmic::Core,
+        _flags: Self::Flags,
+    ) -> (Self, Task<cosmic::Action<Self::Message>>) {
         // Create a nav bar with three page items.
         let mut nav = nav_bar::Model::default();
 
@@ -191,7 +195,7 @@ impl Application for AppModel {
     ///
     /// Tasks may be returned for asynchronous execution of code in the background
     /// on the application's async runtime.
-    fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
+    fn update(&mut self, message: Self::Message) -> Task<cosmic::Action<Self::Message>> {
         match message {
             Message::OpenRepositoryUrl => {
                 _ = open::that_detached(REPOSITORY);
@@ -227,7 +231,7 @@ impl Application for AppModel {
     }
 
     /// Called when a nav item is selected.
-    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<Self::Message> {
+    fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<cosmic::Action<Self::Message>> {
         // Activate the page in the model.
         self.nav.activate(id);
 
@@ -271,7 +275,7 @@ impl AppModel {
     }
 
     /// Updates the header and window titles.
-    pub fn update_title(&mut self) -> Task<Message> {
+    pub fn update_title(&mut self) -> Task<cosmic::Action<Message>> {
         let mut window_title = fl!("app-title");
 
         if let Some(page) = self.nav.text(self.nav.active()) {

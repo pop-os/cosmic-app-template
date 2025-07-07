@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::config::Config;
+use chrono::Timelike;
 use crate::fl;
-use cosmic::app::context_drawer;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length, Subscription};
 use cosmic::prelude::*;
 use cosmic::widget::{self, icon, menu, nav_bar};
 use cosmic::{cosmic_theme, theme};
-use futures_util::SinkExt;
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -40,6 +39,9 @@ pub struct AppModel {
     timer_running: bool,
     /// Alarm state
     alarms: Vec<AlarmItem>,
+    next_alarm_id: u32,
+    /// Alarm editing state
+    editing_alarm: Option<AlarmEdit>,
 }
 
 #[derive(Clone, Debug)]
@@ -48,6 +50,14 @@ pub struct AlarmItem {
     pub time: chrono::NaiveTime,
     pub label: String,
     pub enabled: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct AlarmEdit {
+    pub id: Option<u32>, // None for new alarm
+    pub hour: u32,
+    pub minute: u32,
+    pub label: String,
 }
 
 /// Messages emitted by the application and its widgets.
@@ -71,7 +81,14 @@ pub enum Message {
     SetTimerSeconds(u32),
     // Alarm messages
     AddAlarm,
+    EditAlarm(u32),
+    DeleteAlarm(u32),
     ToggleAlarm(u32),
+    SaveAlarm,
+    CancelAlarmEdit,
+    AlarmEditHour(u32),
+    AlarmEditMinute(u32),
+    AlarmEditLabel(String),
 }
 
 /// Create a COSMIC application from the app model
@@ -111,7 +128,7 @@ impl cosmic::Application for AppModel {
             .activate();
 
         nav.insert()
-            .text(fl!("alarm"))
+            .text(fl!("alarms"))
             .data::<Page>(Page::Alarm)
             .icon(icon::from_name("alarm-symbolic"));
 
@@ -144,6 +161,8 @@ impl cosmic::Application for AppModel {
             timer_remaining: Duration::from_secs(300),
             timer_running: false,
             alarms: Vec::new(),
+            next_alarm_id: 1,
+            editing_alarm: None,
         };
 
         let command = app.update_title();
@@ -169,18 +188,16 @@ impl cosmic::Application for AppModel {
         Some(&self.nav)
     }
 
-    /// Display a context drawer if the context page is requested.
-    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<Self::Message>> {
+    fn context_drawer(&self) -> Option<cosmic::app::ContextDrawer<Self::Message>> {
         if !self.core.window.show_context {
             return None;
         }
 
         Some(match self.context_page {
-            ContextPage::About => context_drawer::context_drawer(
+            ContextPage::About => cosmic::app::context_drawer::context_drawer(
                 self.about(),
-                Message::ToggleContextPage(ContextPage::About),
-            )
-            .title(fl!("about")),
+                Message::ToggleContextPage(ContextPage::About)
+            ).title(fl!("about")),
         })
     }
 
@@ -262,6 +279,9 @@ impl cosmic::Application for AppModel {
                         // Timer finished - could add notification here
                     }
                 }
+
+                // Check for alarm triggers
+                self.check_alarms();
             }
 
             Message::StartStopwatch => {
@@ -301,11 +321,81 @@ impl cosmic::Application for AppModel {
             }
 
             Message::AddAlarm => {
-                // Add new alarm implementation
+                self.editing_alarm = Some(AlarmEdit {
+                    id: None,
+                    hour: self.current_time.hour(),
+                    minute: self.current_time.minute(),
+                    label: String::new(),
+                });
             }
 
-            Message::ToggleAlarm(_id) => {
-                // Toggle alarm implementation
+            Message::EditAlarm(id) => {
+                if let Some(alarm) = self.alarms.iter().find(|a| a.id == id) {
+                    self.editing_alarm = Some(AlarmEdit {
+                        id: Some(id),
+                        hour: alarm.time.hour(),
+                        minute: alarm.time.minute(),
+                        label: alarm.label.clone(),
+                    });
+                }
+            }
+
+            Message::DeleteAlarm(id) => {
+                self.alarms.retain(|alarm| alarm.id != id);
+            }
+
+            Message::ToggleAlarm(id) => {
+                if let Some(alarm) = self.alarms.iter_mut().find(|a| a.id == id) {
+                    alarm.enabled = !alarm.enabled;
+                }
+            }
+
+            Message::SaveAlarm => {
+                if let Some(edit) = &self.editing_alarm {
+                    let time = chrono::NaiveTime::from_hms_opt(edit.hour, edit.minute, 0)
+                        .unwrap_or_else(|| chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap());
+                    
+                    if let Some(id) = edit.id {
+                        // Edit existing alarm
+                        if let Some(alarm) = self.alarms.iter_mut().find(|a| a.id == id) {
+                            alarm.time = time;
+                            alarm.label = edit.label.clone();
+                        }
+                    } else {
+                        // Add new alarm
+                        self.alarms.push(AlarmItem {
+                            id: self.next_alarm_id,
+                            time,
+                            label: edit.label.clone(),
+                            enabled: true,
+                        });
+                        self.next_alarm_id += 1;
+                    }
+                    
+                    self.editing_alarm = None;
+                }
+            }
+
+            Message::CancelAlarmEdit => {
+                self.editing_alarm = None;
+            }
+
+            Message::AlarmEditHour(hour) => {
+                if let Some(edit) = &mut self.editing_alarm {
+                    edit.hour = hour.min(23);
+                }
+            }
+
+            Message::AlarmEditMinute(minute) => {
+                if let Some(edit) = &mut self.editing_alarm {
+                    edit.minute = minute.min(59);
+                }
+            }
+
+            Message::AlarmEditLabel(label) => {
+                if let Some(edit) = &mut self.editing_alarm {
+                    edit.label = label;
+                }
             }
         }
         Task::none()
@@ -319,6 +409,18 @@ impl cosmic::Application for AppModel {
 }
 
 impl AppModel {
+    /// Check if any alarms should trigger
+    fn check_alarms(&self) {
+        let current_time = self.current_time.time();
+        
+        for alarm in &self.alarms {
+            if alarm.enabled && alarm.time.hour() == current_time.hour() && alarm.time.minute() == current_time.minute() {
+                // Alarm triggered - could add notification here
+                println!("Alarm triggered: {} at {}", alarm.label, alarm.time.format("%H:%M"));
+            }
+        }
+    }
+
     /// World Clock view
     fn world_clock_view(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
@@ -342,10 +444,83 @@ impl AppModel {
     fn alarm_view(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
         
+        if let Some(edit) = &self.editing_alarm {
+            // Show alarm edit form
+            self.alarm_edit_view(edit)
+        } else {
+            // Show alarm list
+            let mut column = widget::column()
+                .push(widget::text::title1("⏰"))
+                .push(widget::text::title2(fl!("alarms")))
+                .push(widget::button::standard(fl!("add-alarm")).on_press(Message::AddAlarm))
+                .spacing(space_m);
+
+            if self.alarms.is_empty() {
+                column = column.push(widget::text::body(fl!("no-alarms")));
+            } else {
+                for alarm in &self.alarms {
+                    let alarm_row = widget::row()
+                        .push(widget::text::body(alarm.time.format("%H:%M").to_string()))
+                        .push(widget::text::body(&alarm.label))
+                        .push(
+                            widget::toggler(alarm.enabled)
+                                .on_toggle(move |_| Message::ToggleAlarm(alarm.id))
+                        )
+                        .push(widget::button::standard(fl!("edit-alarm")).on_press(Message::EditAlarm(alarm.id)))
+                        .push(widget::button::destructive(fl!("delete-alarm")).on_press(Message::DeleteAlarm(alarm.id)))
+                        .spacing(space_m)
+                        .align_y(Vertical::Center);
+                    
+                    column = column.push(alarm_row);
+                }
+            }
+
+            column
+                .align_x(Alignment::Center)
+                .apply(widget::container)
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .align_x(Horizontal::Center)
+                .align_y(Vertical::Center)
+                .padding(space_l)
+                .into()
+        }
+    }
+
+    /// Alarm edit view
+    fn alarm_edit_view(&self, edit: &AlarmEdit) -> Element<Message> {
+        let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
+        
+        let hour_str = edit.hour.to_string();
+        let minute_str = edit.minute.to_string();
+
         widget::column()
-            .push(widget::text::title1("⏰"))
-            .push(widget::text::title2(fl!("alarm")))
-            .push(widget::button::standard(fl!("add-alarm")).on_press(Message::AddAlarm))
+            .push(widget::text::title2(fl!("add-alarm")))
+            .push(
+                widget::row()
+                    .push(widget::text::body(fl!("hour")))
+                    .push(
+                        widget::text_input("", hour_str)
+                            .on_input(|s| Message::AlarmEditHour(s.parse().unwrap_or(0)))
+                    )
+                    .push(widget::text::body(fl!("minute")))
+                    .push(
+                        widget::text_input("", minute_str)
+                            .on_input(|s| Message::AlarmEditMinute(s.parse().unwrap_or(0)))
+                    )
+                    .spacing(space_m)
+                    .align_y(Vertical::Center)
+            )
+            .push(
+                widget::text_input(fl!("alarm-label"), edit.label.clone())
+                    .on_input(Message::AlarmEditLabel)
+            )
+            .push(
+                widget::row()
+                    .push(widget::button::standard(fl!("save-alarm")).on_press(Message::SaveAlarm))
+                    .push(widget::button::standard(fl!("reset")).on_press(Message::CancelAlarmEdit))
+                    .spacing(space_m)
+            )
             .spacing(space_m)
             .align_x(Alignment::Center)
             .apply(widget::container)
@@ -356,8 +531,6 @@ impl AppModel {
             .padding(space_l)
             .into()
     }
-
-    /// Stopwatch view
     fn stopwatch_view(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
         
@@ -369,7 +542,7 @@ impl AppModel {
         
         widget::column()
             .push(widget::text::title1("⏱️"))
-            .push(widget::text::title1(time_str).align_x(Alignment::Center))  // Entfernen Sie das &
+            .push(widget::text::title1(time_str).align_x(Alignment::Center))
             .push(
                 widget::row()
                     .push(
@@ -408,7 +581,7 @@ impl AppModel {
         
         widget::column()
             .push(widget::text::title1("⏲️"))
-            .push(widget::text::title1(time_str).align_x(Alignment::Center))  // Entfernen Sie das &
+            .push(widget::text::title1(time_str).align_x(Alignment::Center))
             .push(
                 widget::row()
                     .push(

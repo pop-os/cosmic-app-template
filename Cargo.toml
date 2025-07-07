@@ -13,7 +13,9 @@ vergen = { version = "8", features = ["git", "gitcl"] }
 chrono = { version = "0.4.41", features = ["serde"] }
 futures-util = "0.3.31"
 i18n-embed-fl = "0.9.2"
-open = "5.3.0"
+notify-rust = "4.0"
+open = "5.3.2"
+rodio = { version = "0.17", default-features = false, features = ["wav", "vorbis"] }
 rust-embed = "8.5.0"
 tokio = { version = "1.41.0", features = ["full"] }
 

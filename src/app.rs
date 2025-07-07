@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
 use crate::config::Config;
-use chrono::Timelike;
 use crate::fl;
+use crate::notifications;
+use chrono::Timelike;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length, Subscription};
@@ -89,6 +90,15 @@ pub enum Message {
     AlarmEditHour(u32),
     AlarmEditMinute(u32),
     AlarmEditLabel(String),
+    // Notification messages
+    SendNotification(NotificationType),
+}
+
+#[derive(Debug, Clone)]
+pub enum NotificationType {
+    Alarm { label: String, time: String },
+    Timer,
+    Stopwatch { time: String },
 }
 
 /// Create a COSMIC application from the app model
@@ -276,7 +286,8 @@ impl cosmic::Application for AppModel {
                     self.timer_remaining = self.timer_remaining.saturating_sub(Duration::from_millis(100));
                     if self.timer_remaining == Duration::default() {
                         self.timer_running = false;
-                        // Timer finished - could add notification here
+                        // Timer finished - send notification
+                        notifications::send_timer_notification();
                     }
                 }
 
@@ -290,6 +301,13 @@ impl cosmic::Application for AppModel {
 
             Message::StopStopwatch => {
                 self.stopwatch_running = false;
+                // Send notification with current time
+                let time_str = format!("{:02}:{:02}:{:02}", 
+                    self.stopwatch_time.as_secs() / 3600,
+                    (self.stopwatch_time.as_secs() % 3600) / 60,
+                    self.stopwatch_time.as_secs() % 60
+                );
+                notifications::send_stopwatch_notification(&time_str);
             }
 
             Message::ResetStopwatch => {
@@ -370,9 +388,31 @@ impl cosmic::Application for AppModel {
                             enabled: true,
                         });
                         self.next_alarm_id += 1;
+                        
+                        // Send confirmation notification
+                        let _ = notify_rust::Notification::new()
+                            .summary("Alarm Set")
+                            .body(&format!("⏰ Alarm set for {}", time.format("%H:%M")))
+                            .icon("alarm-symbolic")
+                            .timeout(notify_rust::Timeout::Milliseconds(2000))
+                            .show();
                     }
                     
                     self.editing_alarm = None;
+                }
+            }
+
+            Message::SendNotification(notification_type) => {
+                match notification_type {
+                    NotificationType::Alarm { label, time } => {
+                        notifications::send_alarm_notification(&label, &time);
+                    }
+                    NotificationType::Timer => {
+                        notifications::send_timer_notification();
+                    }
+                    NotificationType::Stopwatch { time } => {
+                        notifications::send_stopwatch_notification(&time);
+                    }
                 }
             }
 
@@ -410,12 +450,21 @@ impl cosmic::Application for AppModel {
 
 impl AppModel {
     /// Check if any alarms should trigger
-    fn check_alarms(&self) {
+    fn check_alarms(&mut self) {
         let current_time = self.current_time.time();
         
         for alarm in &self.alarms {
-            if alarm.enabled && alarm.time.hour() == current_time.hour() && alarm.time.minute() == current_time.minute() {
-                // Alarm triggered - could add notification here
+            if alarm.enabled && 
+               alarm.time.hour() == current_time.hour() && 
+               alarm.time.minute() == current_time.minute() &&
+               current_time.second() == 0 { // Only trigger once per minute
+                
+                // Send notification
+                notifications::send_alarm_notification(
+                    &alarm.label,
+                    &alarm.time.format("%H:%M").to_string()
+                );
+                
                 println!("Alarm triggered: {} at {}", alarm.label, alarm.time.format("%H:%M"));
             }
         }

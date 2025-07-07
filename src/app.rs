@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: {{ license }}
+// SPDX-License-Identifier: MPL-2.0
 
 use crate::config::Config;
 use crate::fl;
@@ -11,6 +11,7 @@ use cosmic::widget::{self, icon, menu, nav_bar};
 use cosmic::{cosmic_theme, theme};
 use futures_util::SinkExt;
 use std::collections::HashMap;
+use std::time::Duration;
 
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg");
@@ -26,8 +27,27 @@ pub struct AppModel {
     nav: nav_bar::Model,
     /// Key bindings for the application's menu bar.
     key_binds: HashMap<menu::KeyBind, MenuAction>,
-    // Configuration data that persists between application runs.
+    /// Configuration data that persists between application runs.
     config: Config,
+    /// Current time for display
+    current_time: chrono::DateTime<chrono::Local>,
+    /// Stopwatch state
+    stopwatch_time: Duration,
+    stopwatch_running: bool,
+    /// Timer state
+    timer_duration: Duration,
+    timer_remaining: Duration,
+    timer_running: bool,
+    /// Alarm state
+    alarms: Vec<AlarmItem>,
+}
+
+#[derive(Clone, Debug)]
+pub struct AlarmItem {
+    pub id: u32,
+    pub time: chrono::NaiveTime,
+    pub label: String,
+    pub enabled: bool,
 }
 
 /// Messages emitted by the application and its widgets.
@@ -38,6 +58,20 @@ pub enum Message {
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
     LaunchUrl(String),
+    UpdateTime,
+    // Stopwatch messages
+    StartStopwatch,
+    StopStopwatch,
+    ResetStopwatch,
+    // Timer messages
+    StartTimer,
+    StopTimer,
+    ResetTimer,
+    SetTimerMinutes(u32),
+    SetTimerSeconds(u32),
+    // Alarm messages
+    AddAlarm,
+    ToggleAlarm(u32),
 }
 
 /// Create a COSMIC application from the app model
@@ -52,7 +86,7 @@ impl cosmic::Application for AppModel {
     type Message = Message;
 
     /// Unique identifier in RDNN (reverse domain name notation) format.
-    const APP_ID: &'static str = "{{ appid }}";
+    const APP_ID: &'static str = "com.github.Moon-Mind.cosmic-watch";
 
     fn core(&self) -> &cosmic::Core {
         &self.core
@@ -67,24 +101,29 @@ impl cosmic::Application for AppModel {
         core: cosmic::Core,
         _flags: Self::Flags,
     ) -> (Self, Task<cosmic::Action<Self::Message>>) {
-        // Create a nav bar with three page items.
+        // Create a nav bar with all pages
         let mut nav = nav_bar::Model::default();
 
         nav.insert()
-            .text(fl!("page-id", num = 1))
-            .data::<Page>(Page::Page1)
-            .icon(icon::from_name("applications-science-symbolic"))
+            .text(fl!("world-clock"))
+            .data::<Page>(Page::WorldClock)
+            .icon(icon::from_name("preferences-system-time-symbolic"))
             .activate();
 
         nav.insert()
-            .text(fl!("page-id", num = 2))
-            .data::<Page>(Page::Page2)
-            .icon(icon::from_name("applications-system-symbolic"));
+            .text(fl!("alarm"))
+            .data::<Page>(Page::Alarm)
+            .icon(icon::from_name("alarm-symbolic"));
 
         nav.insert()
-            .text(fl!("page-id", num = 3))
-            .data::<Page>(Page::Page3)
-            .icon(icon::from_name("applications-games-symbolic"));
+            .text(fl!("stopwatch"))
+            .data::<Page>(Page::Stopwatch)
+            .icon(icon::from_name("chronometer-symbolic"));
+
+        nav.insert()
+            .text(fl!("timer"))
+            .data::<Page>(Page::Timer)
+            .icon(icon::from_name("timer-symbolic"));
 
         // Construct the app model with the runtime's core.
         let mut app = AppModel {
@@ -92,22 +131,21 @@ impl cosmic::Application for AppModel {
             context_page: ContextPage::default(),
             nav,
             key_binds: HashMap::new(),
-            // Optional configuration file for an application.
             config: cosmic_config::Config::new(Self::APP_ID, Config::VERSION)
                 .map(|context| match Config::get_entry(&context) {
                     Ok(config) => config,
-                    Err((_errors, config)) => {
-                        // for why in errors {
-                        //     tracing::error!(%why, "error loading app config");
-                        // }
-
-                        config
-                    }
+                    Err((_errors, config)) => config,
                 })
                 .unwrap_or_default(),
+            current_time: chrono::Local::now(),
+            stopwatch_time: Duration::default(),
+            stopwatch_running: false,
+            timer_duration: Duration::from_secs(300), // 5 minutes default
+            timer_remaining: Duration::from_secs(300),
+            timer_running: false,
+            alarms: Vec::new(),
         };
 
-        // Create a startup command that sets the window title.
         let command = app.update_title();
 
         (app, command)
@@ -147,70 +185,53 @@ impl cosmic::Application for AppModel {
     }
 
     /// Describes the interface based on the current state of the application model.
-    ///
-    /// Application events will be processed through the view. Any messages emitted by
-    /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<Self::Message> {
-        widget::text::title1(fl!("welcome"))
-            .apply(widget::container)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .align_x(Horizontal::Center)
-            .align_y(Vertical::Center)
-            .into()
+        let page = self
+            .nav
+            .data::<Page>(self.nav.active())
+            .cloned()
+            .unwrap_or_default();
+
+        match page {
+            Page::WorldClock => self.world_clock_view(),
+            Page::Alarm => self.alarm_view(),
+            Page::Stopwatch => self.stopwatch_view(),
+            Page::Timer => self.timer_view(),
+        }
     }
 
     /// Register subscriptions for this application.
-    ///
-    /// Subscriptions are long-running async tasks running in the background which
-    /// emit messages to the application through a channel. They are started at the
-    /// beginning of the application, and persist through its lifetime.
     fn subscription(&self) -> Subscription<Self::Message> {
-        struct MySubscription;
-
-        Subscription::batch(vec![
-            // Create a subscription which emits updates through a channel.
-            Subscription::run_with_id(
-                std::any::TypeId::of::<MySubscription>(),
-                cosmic::iced::stream::channel(4, move |mut channel| async move {
-                    _ = channel.send(Message::SubscriptionChannel).await;
-
-                    futures_util::future::pending().await
-                }),
-            ),
-            // Watch for application configuration changes.
+        let mut subscriptions = vec![
+            cosmic::iced::time::every(Duration::from_secs(1)).map(|_| Message::UpdateTime),
             self.core()
                 .watch_config::<Config>(Self::APP_ID)
-                .map(|update| {
-                    // for why in update.errors {
-                    //     tracing::error!(?why, "app config error");
-                    // }
+                .map(|update| Message::UpdateConfig(update.config)),
+        ];
 
-                    Message::UpdateConfig(update.config)
-                }),
-        ])
+        // Add more frequent updates for stopwatch and timer
+        if self.stopwatch_running || self.timer_running {
+            subscriptions.push(
+                cosmic::iced::time::every(Duration::from_millis(100)).map(|_| Message::UpdateTime),
+            );
+        }
+
+        Subscription::batch(subscriptions)
     }
 
     /// Handles messages emitted by the application and its widgets.
-    ///
-    /// Tasks may be returned for asynchronous execution of code in the background
-    /// on the application's async runtime.
     fn update(&mut self, message: Self::Message) -> Task<cosmic::Action<Self::Message>> {
         match message {
             Message::OpenRepositoryUrl => {
                 _ = open::that_detached(REPOSITORY);
             }
 
-            Message::SubscriptionChannel => {
-                // For example purposes only.
-            }
+            Message::SubscriptionChannel => {}
 
             Message::ToggleContextPage(context_page) => {
                 if self.context_page == context_page {
-                    // Close the context drawer if the toggled context page is the same.
                     self.core.window.show_context = !self.core.window.show_context;
                 } else {
-                    // Open the context drawer to display the requested context page.
                     self.context_page = context_page;
                     self.core.window.show_context = true;
                 }
@@ -226,26 +247,200 @@ impl cosmic::Application for AppModel {
                     eprintln!("failed to open {url:?}: {err}");
                 }
             },
+
+            Message::UpdateTime => {
+                self.current_time = chrono::Local::now();
+                
+                if self.stopwatch_running {
+                    self.stopwatch_time += Duration::from_millis(100);
+                }
+                
+                if self.timer_running && self.timer_remaining > Duration::default() {
+                    self.timer_remaining = self.timer_remaining.saturating_sub(Duration::from_millis(100));
+                    if self.timer_remaining == Duration::default() {
+                        self.timer_running = false;
+                        // Timer finished - could add notification here
+                    }
+                }
+            }
+
+            Message::StartStopwatch => {
+                self.stopwatch_running = true;
+            }
+
+            Message::StopStopwatch => {
+                self.stopwatch_running = false;
+            }
+
+            Message::ResetStopwatch => {
+                self.stopwatch_running = false;
+                self.stopwatch_time = Duration::default();
+            }
+
+            Message::StartTimer => {
+                self.timer_running = true;
+            }
+
+            Message::StopTimer => {
+                self.timer_running = false;
+            }
+
+            Message::ResetTimer => {
+                self.timer_running = false;
+                self.timer_remaining = self.timer_duration;
+            }
+
+            Message::SetTimerMinutes(minutes) => {
+                self.timer_duration = Duration::from_secs(minutes as u64 * 60 + self.timer_duration.as_secs() % 60);
+                self.timer_remaining = self.timer_duration;
+            }
+
+            Message::SetTimerSeconds(seconds) => {
+                self.timer_duration = Duration::from_secs((self.timer_duration.as_secs() / 60) * 60 + seconds as u64);
+                self.timer_remaining = self.timer_duration;
+            }
+
+            Message::AddAlarm => {
+                // Add new alarm implementation
+            }
+
+            Message::ToggleAlarm(_id) => {
+                // Toggle alarm implementation
+            }
         }
         Task::none()
     }
 
     /// Called when a nav item is selected.
     fn on_nav_select(&mut self, id: nav_bar::Id) -> Task<cosmic::Action<Self::Message>> {
-        // Activate the page in the model.
         self.nav.activate(id);
-
         self.update_title()
     }
 }
 
 impl AppModel {
+    /// World Clock view
+    fn world_clock_view(&self) -> Element<Message> {
+        let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
+        
+        widget::column()
+            .push(widget::text::title1("🌍"))
+            .push(widget::text::title1(self.current_time.format("%H:%M:%S").to_string()).align_x(Alignment::Center))
+            .push(widget::text::body(self.current_time.format("%A, %B %d, %Y").to_string()).align_x(Alignment::Center))
+            .spacing(space_m)
+            .align_x(Alignment::Center)
+            .apply(widget::container)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Horizontal::Center)
+            .align_y(Vertical::Center)
+            .padding(space_l)
+            .into()
+    }
+
+    /// Alarm view
+    fn alarm_view(&self) -> Element<Message> {
+        let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
+        
+        widget::column()
+            .push(widget::text::title1("⏰"))
+            .push(widget::text::title2(fl!("alarm")))
+            .push(widget::button::standard(fl!("add-alarm")).on_press(Message::AddAlarm))
+            .spacing(space_m)
+            .align_x(Alignment::Center)
+            .apply(widget::container)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Horizontal::Center)
+            .align_y(Vertical::Center)
+            .padding(space_l)
+            .into()
+    }
+
+    /// Stopwatch view
+    fn stopwatch_view(&self) -> Element<Message> {
+        let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
+        
+        let time_str = format!("{:02}:{:02}:{:02}", 
+            self.stopwatch_time.as_secs() / 3600,
+            (self.stopwatch_time.as_secs() % 3600) / 60,
+            self.stopwatch_time.as_secs() % 60
+        );
+        
+        widget::column()
+            .push(widget::text::title1("⏱️"))
+            .push(widget::text::title1(time_str).align_x(Alignment::Center))  // Entfernen Sie das &
+            .push(
+                widget::row()
+                    .push(
+                        widget::button::standard(fl!("start"))
+                            .on_press(Message::StartStopwatch)
+                    )
+                    .push(
+                        widget::button::standard(fl!("stop"))
+                            .on_press(Message::StopStopwatch)
+                    )
+                    .push(
+                        widget::button::standard(fl!("reset"))
+                            .on_press(Message::ResetStopwatch)
+                    )
+                    .spacing(space_m)
+            )
+            .spacing(space_m)
+            .align_x(Alignment::Center)
+            .apply(widget::container)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Horizontal::Center)
+            .align_y(Vertical::Center)
+            .padding(space_l)
+            .into()
+    }
+
+    /// Timer view
+    fn timer_view(&self) -> Element<Message> {
+        let cosmic_theme::Spacing { space_m, space_l, .. } = theme::active().cosmic().spacing;
+        
+        let time_str = format!("{:02}:{:02}", 
+            self.timer_remaining.as_secs() / 60,
+            self.timer_remaining.as_secs() % 60
+        );
+        
+        widget::column()
+            .push(widget::text::title1("⏲️"))
+            .push(widget::text::title1(time_str).align_x(Alignment::Center))  // Entfernen Sie das &
+            .push(
+                widget::row()
+                    .push(
+                        widget::button::standard(fl!("start"))
+                            .on_press(Message::StartTimer)
+                    )
+                    .push(
+                        widget::button::standard(fl!("stop"))
+                            .on_press(Message::StopTimer)
+                    )
+                    .push(
+                        widget::button::standard(fl!("reset"))
+                            .on_press(Message::ResetTimer)
+                    )
+                    .spacing(space_m)
+            )
+            .spacing(space_m)
+            .align_x(Alignment::Center)
+            .apply(widget::container)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .align_x(Horizontal::Center)
+            .align_y(Vertical::Center)
+            .padding(space_l)
+            .into()
+    }
+
     /// The about page for this app.
     pub fn about(&self) -> Element<Message> {
         let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
 
         let icon = widget::svg(widget::svg::Handle::from_memory(APP_ICON));
-
         let title = widget::text::title3(fl!("app-title"));
 
         let hash = env!("VERGEN_GIT_SHA");
@@ -292,10 +487,13 @@ impl AppModel {
 }
 
 /// The page to display in the application.
+#[derive(Clone, Debug, Default)]
 pub enum Page {
-    Page1,
-    Page2,
-    Page3,
+    #[default]
+    WorldClock,
+    Alarm,
+    Stopwatch,
+    Timer,
 }
 
 /// The context page to display in the context drawer.

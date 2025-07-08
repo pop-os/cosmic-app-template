@@ -74,12 +74,12 @@ pub enum Message {
     StartStopwatch,
     StopStopwatch,
     ResetStopwatch,
-    // Timer messages
-    StartTimer,
-    StopTimer,
-    ResetTimer,
-    SetTimerMinutes(u32),
-    SetTimerSeconds(u32),
+// Timer messages
+StartTimer,
+StopTimer,
+ResetTimer,
+SetTimerMinutes(u32),
+SetTimerSeconds(u32),
     // Alarm messages
     AddAlarm,
     EditAlarm(u32),

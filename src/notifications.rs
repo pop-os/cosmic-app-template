@@ -1,10 +1,11 @@
 use notify_rust::{Notification, Timeout};
 use std::process::Command;
 use std::time::Duration;
+use std::io::Write;
 
 pub fn send_alarm_notification(label: &str, time: &str) {
-    // Play multiple beeps for alarm
-    play_beep_sequence(vec![800, 800, 800], 200);
+    // Play alarm sound using system notification sound
+    play_system_sound("alarm");
     
     let _ = Notification::new()
         .summary("🔔 Alarm")
@@ -17,7 +18,7 @@ pub fn send_alarm_notification(label: &str, time: &str) {
 
 pub fn send_timer_notification() {
     // Play completion sound
-    play_beep_sequence(vec![600, 400], 300);
+    play_system_sound("complete");
     
     let _ = Notification::new()
         .summary("🔔 Timer Finished")
@@ -29,8 +30,8 @@ pub fn send_timer_notification() {
 }
 
 pub fn send_stopwatch_notification(time: &str) {
-    // Single beep for stopwatch
-    play_beep_sequence(vec![400], 200);
+    // Single notification sound
+    play_system_sound("message");
     
     let _ = Notification::new()
         .summary("⏱️ Stopwatch Stopped")
@@ -51,34 +52,59 @@ pub fn send_alarm_set_notification(time: &str) {
         .show();
 }
 
-fn play_beep_sequence(frequencies: Vec<i32>, duration_ms: u64) {
+fn play_system_sound(sound_type: &str) {
+    let sound_type = sound_type.to_string();
     std::thread::spawn(move || {
-        for freq in frequencies {
-            // Try different beep commands
-            let _ = Command::new("beep")
-                .arg("-f")
-                .arg(freq.to_string())
-                .arg("-l")
-                .arg(duration_ms.to_string())
-                .output();
-                
-            // Alternative: Use paplay with generated tone
-            let _ = Command::new("sh")
-                .arg("-c")
-                .arg(&format!(
-                    "paplay <(sox -n -t wav - synth 0.{} sine {})",
-                    duration_ms / 100,
-                    freq
-                ))
-                .output();
-                
-            // Simple fallback: terminal bell
-            let _ = Command::new("echo")
-                .arg("-e")
-                .arg("\\a")
-                .output();
-                
-            std::thread::sleep(Duration::from_millis(duration_ms + 50));
+        let sound_name = match sound_type.as_str() {
+            "alarm" => "alarm-clock-elapsed",
+            "complete" => "complete", 
+            "message" => "message-new-instant",
+            _ => "bell",
+        };
+        
+        // Pop!_OS specific sound methods (in order of preference)
+        let methods = vec![
+            // Method 1: GNOME/Pop!_OS default sound player
+            ("canberra-gtk-play", vec!["-i", sound_name]),
+            ("canberra-gtk-play", vec!["-i", "bell"]),
+            
+            // Method 2: PulseAudio (standard on Pop!_OS)
+            ("pactl", vec!["play-sample", sound_name]),
+            ("pactl", vec!["play-sample", "bell"]),
+            
+            // Method 3: Direct sound file playback
+            ("paplay", vec!["/usr/share/sounds/freedesktop/stereo/bell.oga"]),
+            ("paplay", vec!["/usr/share/sounds/gnome/default/alerts/bark.ogg"]),
+            
+            // Method 4: ALSA fallback
+            ("aplay", vec!["/usr/share/sounds/alsa/Front_Left.wav"]),
+        ];
+        
+        let mut success = false;
+        for (cmd, args) in methods {
+            if let Ok(output) = Command::new(cmd).args(&args).output() {
+                if output.status.success() {
+                    success = true;
+                    break;
+                }
+            }
+        }
+        
+        // Pop!_OS fallback: Multiple beeps for different sound types
+        if !success {
+            let (repeat_count, interval_ms) = match sound_type.as_str() {
+                "alarm" => (4, 250),    // Urgent alarm pattern
+                "complete" => (2, 150), // Completion pattern  
+                _ => (1, 100),          // Single beep
+            };
+            
+            for i in 0..repeat_count {
+                print!("\x07");
+                std::io::stdout().flush().ok();
+                if i < repeat_count - 1 {
+                    std::thread::sleep(Duration::from_millis(interval_ms));
+                }
+            }
         }
     });
 }

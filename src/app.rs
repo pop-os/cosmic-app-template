@@ -65,7 +65,6 @@ pub struct AlarmEdit {
 #[derive(Debug, Clone)]
 pub enum Message {
     OpenRepositoryUrl,
-    SubscriptionChannel,
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
     LaunchUrl(String),
@@ -80,7 +79,7 @@ StopTimer,
 ResetTimer,
 SetTimerMinutes(u32),
 SetTimerSeconds(u32),
-    // Alarm messages
+// Alarm messages
     AddAlarm,
     EditAlarm(u32),
     DeleteAlarm(u32),
@@ -90,15 +89,6 @@ SetTimerSeconds(u32),
     AlarmEditHour(u32),
     AlarmEditMinute(u32),
     AlarmEditLabel(String),
-    // Notification messages
-    SendNotification(NotificationType),
-}
-
-#[derive(Debug, Clone)]
-pub enum NotificationType {
-    Alarm { label: String, time: String },
-    Timer,
-    Stopwatch { time: String },
 }
 
 /// Create a COSMIC application from the app model
@@ -253,8 +243,6 @@ impl cosmic::Application for AppModel {
                 _ = open::that_detached(REPOSITORY);
             }
 
-            Message::SubscriptionChannel => {}
-
             Message::ToggleContextPage(context_page) => {
                 if self.context_page == context_page {
                     self.core.window.show_context = !self.core.window.show_context;
@@ -399,20 +387,6 @@ impl cosmic::Application for AppModel {
                     }
                     
                     self.editing_alarm = None;
-                }
-            }
-
-            Message::SendNotification(notification_type) => {
-                match notification_type {
-                    NotificationType::Alarm { label, time } => {
-                        notifications::send_alarm_notification(&label, &time);
-                    }
-                    NotificationType::Timer => {
-                        notifications::send_timer_notification();
-                    }
-                    NotificationType::Stopwatch { time } => {
-                        notifications::send_stopwatch_notification(&time);
-                    }
                 }
             }
 

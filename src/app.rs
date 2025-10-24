@@ -7,7 +7,7 @@ use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length, Subscription};
 use cosmic::prelude::*;
-use cosmic::widget::{self, icon, menu, nav_bar};
+use cosmic::widget::{self, about::About, icon, menu, nav_bar};
 use cosmic::{cosmic_theme, theme};
 use futures_util::SinkExt;
 use std::collections::HashMap;
@@ -22,6 +22,8 @@ pub struct AppModel {
     core: cosmic::Core,
     /// Display a context drawer with the designated page if defined.
     context_page: ContextPage,
+    /// The about page for this app.
+    about: About,
     /// Contains items assigned to the nav bar panel.
     nav: nav_bar::Model,
     /// Key bindings for the application's menu bar.
@@ -33,7 +35,6 @@ pub struct AppModel {
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
 pub enum Message {
-    OpenRepositoryUrl,
     SubscriptionChannel,
     ToggleContextPage(ContextPage),
     UpdateConfig(Config),
@@ -86,10 +87,19 @@ impl cosmic::Application for AppModel {
             .data::<Page>(Page::Page3)
             .icon(icon::from_name("applications-games-symbolic"));
 
+        // Create the about widget
+        let about = About::default()
+            .name(fl!("app-title"))
+            .icon(widget::icon::from_svg_bytes(APP_ICON))
+            .version(env!("CARGO_PKG_VERSION"))
+            .links([(fl!("repository"), REPOSITORY)])
+            .license(env!("CARGO_PKG_LICENSE"));
+
         // Construct the app model with the runtime's core.
         let mut app = AppModel {
             core,
             context_page: ContextPage::default(),
+            about,
             nav,
             key_binds: HashMap::new(),
             // Optional configuration file for an application.
@@ -114,7 +124,7 @@ impl cosmic::Application for AppModel {
     }
 
     /// Elements to pack at the start of the header bar.
-    fn header_start(&self) -> Vec<Element<Self::Message>> {
+    fn header_start(&self) -> Vec<Element<'_, Self::Message>> {
         let menu_bar = menu::bar(vec![menu::Tree::with_children(
             menu::root(fl!("view")).apply(Element::from),
             menu::items(
@@ -132,17 +142,17 @@ impl cosmic::Application for AppModel {
     }
 
     /// Display a context drawer if the context page is requested.
-    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<Self::Message>> {
+    fn context_drawer(&self) -> Option<context_drawer::ContextDrawer<'_, Self::Message>> {
         if !self.core.window.show_context {
             return None;
         }
 
         Some(match self.context_page {
-            ContextPage::About => context_drawer::context_drawer(
-                self.about(),
+            ContextPage::About => context_drawer::about(
+                &self.about,
+                |url| Message::LaunchUrl(url.to_string()),
                 Message::ToggleContextPage(ContextPage::About),
-            )
-            .title(fl!("about")),
+            ),
         })
     }
 
@@ -150,7 +160,7 @@ impl cosmic::Application for AppModel {
     ///
     /// Application events will be processed through the view. Any messages emitted by
     /// events received by widgets will be passed to the update method.
-    fn view(&self) -> Element<Self::Message> {
+    fn view(&self) -> Element<'_, Self::Message> {
         widget::text::title1(fl!("welcome"))
             .apply(widget::container)
             .width(Length::Fill)
@@ -197,10 +207,6 @@ impl cosmic::Application for AppModel {
     /// on the application's async runtime.
     fn update(&mut self, message: Self::Message) -> Task<cosmic::Action<Self::Message>> {
         match message {
-            Message::OpenRepositoryUrl => {
-                _ = open::that_detached(REPOSITORY);
-            }
-
             Message::SubscriptionChannel => {
                 // For example purposes only.
             }
@@ -240,40 +246,6 @@ impl cosmic::Application for AppModel {
 }
 
 impl AppModel {
-    /// The about page for this app.
-    pub fn about(&self) -> Element<Message> {
-        let cosmic_theme::Spacing { space_xxs, .. } = theme::active().cosmic().spacing;
-
-        let icon = widget::svg(widget::svg::Handle::from_memory(APP_ICON));
-
-        let title = widget::text::title3(fl!("app-title"));
-
-        let hash = env!("VERGEN_GIT_SHA");
-        let short_hash: String = hash.chars().take(7).collect();
-        let date = env!("VERGEN_GIT_COMMIT_DATE");
-
-        let link = widget::button::link(REPOSITORY)
-            .on_press(Message::OpenRepositoryUrl)
-            .padding(0);
-
-        widget::column()
-            .push(icon)
-            .push(title)
-            .push(link)
-            .push(
-                widget::button::link(fl!(
-                    "git-description",
-                    hash = short_hash.as_str(),
-                    date = date
-                ))
-                .on_press(Message::LaunchUrl(format!("{REPOSITORY}/commits/{hash}")))
-                .padding(0),
-            )
-            .align_x(Alignment::Center)
-            .spacing(space_xxs)
-            .into()
-    }
-
     /// Updates the header and window titles.
     pub fn update_title(&mut self) -> Task<cosmic::Action<Message>> {
         let mut window_title = fl!("app-title");

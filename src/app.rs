@@ -6,11 +6,11 @@ use cosmic::app::context_drawer;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
 use cosmic::iced::{Alignment, Length, Subscription};
-use cosmic::prelude::*;
 use cosmic::widget::{self, about::About, icon, menu, nav_bar};
-use cosmic::{cosmic_theme, theme};
+use cosmic::{iced_futures, prelude::*};
 use futures_util::SinkExt;
 use std::collections::HashMap;
+use std::time::Duration;
 
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 const APP_ICON: &[u8] = include_bytes!("../resources/icons/hicolor/scalable/apps/icon.svg");
@@ -28,17 +28,22 @@ pub struct AppModel {
     nav: nav_bar::Model,
     /// Key bindings for the application's menu bar.
     key_binds: HashMap<menu::KeyBind, MenuAction>,
-    // Configuration data that persists between application runs.
+    /// Configuration data that persists between application runs.
     config: Config,
+    /// Time active
+    time: u32,
+    /// Toggle the watch subscription
+    watch_is_active: bool,
 }
 
 /// Messages emitted by the application and its widgets.
 #[derive(Debug, Clone)]
 pub enum Message {
-    SubscriptionChannel,
-    ToggleContextPage(ContextPage),
-    UpdateConfig(Config),
     LaunchUrl(String),
+    ToggleContextPage(ContextPage),
+    ToggleWatch,
+    UpdateConfig(Config),
+    WatchTick(u32),
 }
 
 /// Create a COSMIC application from the app model
@@ -53,7 +58,7 @@ impl cosmic::Application for AppModel {
     type Message = Message;
 
     /// Unique identifier in RDNN (reverse domain name notation) format.
-    const APP_ID: &'static str = "{{ appid }}";
+    const APP_ID: &'static str = "dev.mmurphy.Test";
 
     fn core(&self) -> &cosmic::Core {
         &self.core
@@ -115,6 +120,8 @@ impl cosmic::Application for AppModel {
                     }
                 })
                 .unwrap_or_default(),
+            time: 0,
+            watch_is_active: false,
         };
 
         // Create a startup command that sets the window title.
@@ -161,10 +168,69 @@ impl cosmic::Application for AppModel {
     /// Application events will be processed through the view. Any messages emitted by
     /// events received by widgets will be passed to the update method.
     fn view(&self) -> Element<'_, Self::Message> {
-        widget::text::title1(fl!("welcome"))
+        let space_s = cosmic::theme::spacing().space_s;
+        let content: Element<_> = match self.nav.active_data::<Page>().unwrap() {
+            Page::Page1 => {
+                let header = widget::row::with_capacity(2)
+                    .push(widget::text::title1(fl!("welcome")))
+                    .push(widget::text::title3(fl!("page-id", num = 1)))
+                    .align_y(Alignment::End)
+                    .spacing(space_s);
+
+                let counter_label = ["Watch: ", self.time.to_string().as_str()].concat();
+                let section = cosmic::widget::settings::section().add(
+                    cosmic::widget::settings::item::builder(counter_label).control(
+                        widget::button::text(if self.watch_is_active {
+                            "Stop"
+                        } else {
+                            "Start"
+                        })
+                        .on_press(Message::ToggleWatch),
+                    ),
+                );
+
+                widget::column::with_capacity(2)
+                    .push(header)
+                    .push(section)
+                    .spacing(space_s)
+                    .height(Length::Fill)
+                    .into()
+            }
+
+            Page::Page2 => {
+                let header = widget::row::with_capacity(2)
+                    .push(widget::text::title1(fl!("welcome")))
+                    .push(widget::text::title3(fl!("page-id", num = 2)))
+                    .align_y(Alignment::End)
+                    .spacing(space_s);
+
+                widget::column::with_capacity(1)
+                    .push(header)
+                    .spacing(space_s)
+                    .height(Length::Fill)
+                    .into()
+            }
+
+            Page::Page3 => {
+                let header = widget::row::with_capacity(2)
+                    .push(widget::text::title1(fl!("welcome")))
+                    .push(widget::text::title3(fl!("page-id", num = 3)))
+                    .align_y(Alignment::End)
+                    .spacing(space_s);
+
+                widget::column::with_capacity(1)
+                    .push(header)
+                    .spacing(space_s)
+                    .height(Length::Fill)
+                    .into()
+            }
+        };
+
+        widget::container(content)
+            .width(600)
+            .height(Length::Fill)
             .apply(widget::container)
             .width(Length::Fill)
-            .height(Length::Fill)
             .align_x(Horizontal::Center)
             .align_y(Vertical::Center)
             .into()
@@ -173,21 +239,12 @@ impl cosmic::Application for AppModel {
     /// Register subscriptions for this application.
     ///
     /// Subscriptions are long-running async tasks running in the background which
-    /// emit messages to the application through a channel. They are started at the
-    /// beginning of the application, and persist through its lifetime.
+    /// emit messages to the application through a channel. They can be dynamically
+    /// stopped and started conditionally based on application state, or persist
+    /// indefinitely.
     fn subscription(&self) -> Subscription<Self::Message> {
-        struct MySubscription;
-
-        Subscription::batch(vec![
-            // Create a subscription which emits updates through a channel.
-            Subscription::run_with_id(
-                std::any::TypeId::of::<MySubscription>(),
-                cosmic::iced::stream::channel(4, move |mut channel| async move {
-                    _ = channel.send(Message::SubscriptionChannel).await;
-
-                    futures_util::future::pending().await
-                }),
-            ),
+        // Add subscriptions which are always active.
+        let mut subscriptions = vec![
             // Watch for application configuration changes.
             self.core()
                 .watch_config::<Config>(Self::APP_ID)
@@ -198,7 +255,25 @@ impl cosmic::Application for AppModel {
 
                     Message::UpdateConfig(update.config)
                 }),
-        ])
+        ];
+
+        // Conditionally enables a timer that emits a message every second.
+        if self.watch_is_active {
+            subscriptions.push(Subscription::run(|| {
+                iced_futures::stream::channel(1, |mut emitter| async move {
+                    let mut time = 1;
+                    let mut interval = tokio::time::interval(Duration::from_secs(1));
+
+                    loop {
+                        interval.tick().await;
+                        _ = emitter.send(Message::WatchTick(time)).await;
+                        time += 1;
+                    }
+                })
+            }));
+        }
+
+        Subscription::batch(subscriptions)
     }
 
     /// Handles messages emitted by the application and its widgets.
@@ -207,8 +282,12 @@ impl cosmic::Application for AppModel {
     /// on the application's async runtime.
     fn update(&mut self, message: Self::Message) -> Task<cosmic::Action<Self::Message>> {
         match message {
-            Message::SubscriptionChannel => {
-                // For example purposes only.
+            Message::WatchTick(time) => {
+                self.time = time;
+            }
+
+            Message::ToggleWatch => {
+                self.watch_is_active = !self.watch_is_active;
             }
 
             Message::ToggleContextPage(context_page) => {

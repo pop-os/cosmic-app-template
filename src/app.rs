@@ -260,7 +260,7 @@ impl cosmic::Application for AppModel {
         // Conditionally enables a timer that emits a message every second.
         if self.watch_is_active {
             subscriptions.push(Subscription::run(|| {
-                iced_futures::stream::channel(1, |mut emitter| async move {
+                iced_futures::stream::channel(1, |mut emitter: iced_futures::futures::channel::mpsc::Sender| async move {
                     let mut time = 1;
                     let mut interval = tokio::time::interval(Duration::from_secs(1));
 

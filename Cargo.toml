@@ -21,22 +21,10 @@ tokio = { version = "1.48.0", features = ["full"] }
 git = "https://github.com/pop-os/libcosmic.git"
 # See https://github.com/pop-os/libcosmic/blob/master/Cargo.toml for available features.
 features = [
-    # Accessibility support
-    "a11y",
     # About widget for the app
     "about",
-    # Uses cosmic-settings-daemon to watch for config file changes
-    "dbus-config",
-    # Support creating additional application windows.
-    "multi-window",
     # On app startup, focuses an existing instance if the app is already open
     "single-instance",
-    # Uses tokio as the executor for the runtime
-    "tokio",
-    # Windowing support for X11, Windows, Mac, & Redox
-    "winit",
-    # Add Wayland support to winit
-    "wayland",
     # GPU-accelerated rendering
     "wgpu",
 ]

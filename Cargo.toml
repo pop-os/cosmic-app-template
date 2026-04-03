@@ -7,7 +7,6 @@ description = "{{ description }}"
 repository = "{{ repository-url }}"
 
 [dependencies]
-futures-util = "0.3.31"
 i18n-embed = { version = "0.16", features = [
     "fluent-system",
     "desktop-requester",

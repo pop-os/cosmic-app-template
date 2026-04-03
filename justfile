@@ -41,7 +41,7 @@ clean-dist: clean clean-vendor
 
 # Compiles with debug profile
 build-debug *args:
-    cargo build {{args}}
+    cargo build --locked {{args}}
 
 # Compiles with release profile
 build-release *args: (build-debug '--release' args)
@@ -51,14 +51,14 @@ build-vendored *args: vendor-extract (build-release '--frozen --offline' args)
 
 # Runs a clippy check
 check *args:
-    cargo clippy --all-features {{args}} -- -W clippy::pedantic
+    cargo clippy --all-features --locked {{args}} -- -W clippy::pedantic
 
 # Runs a clippy check with JSON message format
 check-json: (check '--message-format=json')
 
 # Run the application for testing purposes
 run *args:
-    env RUST_BACKTRACE=full cargo run --release {{args}}
+    env RUST_BACKTRACE=full cargo run --release --locked {{args}}
 
 # Installs files
 install:

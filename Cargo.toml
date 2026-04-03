@@ -20,13 +20,20 @@ tokio = { version = "1.48.0", features = ["full"] }
 [dependencies.libcosmic]
 git = "https://github.com/pop-os/libcosmic.git"
 # See https://github.com/pop-os/libcosmic/blob/master/Cargo.toml for available features.
+# Remove features if not needed.
 features = [
     # About widget for the app
     "about",
     # On app startup, focuses an existing instance if the app is already open
     "single-instance",
+    # Markdown widget
+    "markdown",
+    # QR code widget
+    "qr_code",
     # GPU-accelerated rendering
     "wgpu",
+    # xdg portal dialogs on Linux
+    "xdg-portal"
 ]
 
 # Uncomment to test a locally-cloned libcosmic

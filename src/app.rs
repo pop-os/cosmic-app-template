@@ -5,8 +5,7 @@ use crate::fl;
 use cosmic::app::context_drawer;
 use cosmic::cosmic_config::{self, CosmicConfigEntry};
 use cosmic::iced::alignment::{Horizontal, Vertical};
-use cosmic::iced::{Alignment, Length, Subscription};
-use cosmic::iced_futures::{self, futures};
+use cosmic::iced::{Alignment, Length, Subscription, futures};
 use cosmic::prelude::*;
 use cosmic::widget::{self, about::About, icon, menu, nav_bar};
 use futures::SinkExt;
@@ -261,7 +260,7 @@ impl cosmic::Application for AppModel {
         // Conditionally enables a timer that emits a message every second.
         if self.watch_is_active {
             subscriptions.push(Subscription::run(|| {
-                iced_futures::stream::channel(1, |mut emitter: futures::channel::mpsc::Sender<_>| async move {
+                cosmic::iced::stream::channel(1, |mut emitter: futures::channel::mpsc::Sender<_>| async move {
                     let mut time = 1;
                     let mut interval = tokio::time::interval(Duration::from_secs(1));
 

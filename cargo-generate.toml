@@ -3,9 +3,9 @@ cargo_generate_version = ">=0.22"
 
 [placeholders.appid]
 type = "string"
-prompt = "RDNN App ID (com.github.username.ProjectName)"
-regex = "^[a-zA-Z0-9]+\\.[a-zA-Z0-9]+\\.[a-zA-Z0-9-_]+(\\.[a-zA-Z0-9-_]+)?$"
-default = "com.github.pop-os.cosmic-app-template"
+prompt = "RDNN App ID (io.github.username.ProjectName, lowercase except the last component, `-` becomes `_`)"
+regex = "^(?:[a-z]|_[0-9])[a-z0-9_]*(?:\\.(?:[a-z]|_[0-9])[a-z0-9_]*){1,3}\\.(?:[A-Za-z]|_[0-9])[A-Za-z0-9_-]*$"
+default = "io.github.pop_os.cosmic-app-template"
 
 [placeholders.description]
 type = "string"

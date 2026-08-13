@@ -4,6 +4,8 @@ A template for developing applications for the COSMIC™ desktop environment usi
 
 ## Getting Started
 
+> Please refer to the [COSMIC Trademark Policy][cosmic-trademark] when choosing a name for a project.
+
 To create an application with this template, [install `cargo generate`][cargo-generate] and run:
 
 ```sh
@@ -20,6 +22,8 @@ A [justfile](./justfile) is included by default with common recipes used by othe
 - `just check` runs clippy on the project to check for linter warnings
 - `just check-json` can be used by IDEs that support LSP
 
+
+
 ## Documentation
 
 Refer to the [libcosmic API documentation][api-docs] and [book][book] for help with building applications with [libcosmic][libcosmic].
@@ -27,5 +31,6 @@ Refer to the [libcosmic API documentation][api-docs] and [book][book] for help w
 [api-docs]: https://pop-os.github.io/libcosmic/cosmic/
 [book]: https://pop-os.github.io/libcosmic-book/
 [cargo-generate]: https://cargo-generate.github.io/cargo-generate/installation.html
+[cosmic-trademark]: https://github.com/pop-os/cosmic-epoch/blob/master/TRADEMARK.md
 [libcosmic]: https://github.com/pop-os/libcosmic/
 [just]: https://github.com/casey/just

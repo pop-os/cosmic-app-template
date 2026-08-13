@@ -1,4 +1,6 @@
 app-title = {{ project-name | title_case }}
+app-comment = {{ description }}
+app-keywords =
 about = About
 repository = Repository
 view = View
